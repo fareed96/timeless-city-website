@@ -73,10 +73,6 @@ export async function createEvent(event: {
   end_date: string;
   title: string;
   description: string;
-  type: string;
-  multiplier: number;
-  starts_at: string;
-  ends_at: string;
 }): Promise<void> {
   const { error } = await supabase.from("events").insert(event);
   if (error) throw error;

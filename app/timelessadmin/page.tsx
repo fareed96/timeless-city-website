@@ -392,10 +392,6 @@ function EventsPanel() {
         end_date: end.toISOString(),
         title: typeInfo.label,
         description: `${typeInfo.label} event with ${bonusMultiplier}x bonus`,
-        type: selectedType,
-        multiplier: bonusMultiplier,
-        starts_at: now.toISOString(),
-        ends_at: end.toISOString(),
       });
 
       showToast("✅ Event created!");
