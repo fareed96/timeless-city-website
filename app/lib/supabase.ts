@@ -1,0 +1,88 @@
+import { createClient } from "@supabase/supabase-js";
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+// ─── Game Config ───
+
+export interface GameConfigRow {
+  key: string;
+  value: any;
+  updated_at: string;
+}
+
+export interface RarityWeights {
+  common: number;
+  rare: number;
+  epic: number;
+  legendary: number;
+}
+
+export interface RarityPresets {
+  [name: string]: RarityWeights & { cardpack_boost?: number };
+}
+
+export async function fetchAllConfig(): Promise<GameConfigRow[]> {
+  const { data, error } = await supabase
+    .from("game_config")
+    .select("*")
+    .order("key");
+  if (error) throw error;
+  return data || [];
+}
+
+export async function updateConfig(key: string, value: any): Promise<void> {
+  const { error } = await supabase
+    .from("game_config")
+    .upsert(
+      { key, value, updated_at: new Date().toISOString() },
+      { onConflict: "key" }
+    );
+  if (error) throw error;
+}
+
+// ─── Events ───
+
+export interface EventRow {
+  id: string;
+  event_type: string;
+  bonus_multiplier: number;
+  start_date: string;
+  end_date: string;
+  title: string;
+  description: string | null;
+}
+
+export async function fetchActiveEvents(): Promise<EventRow[]> {
+  const { data, error } = await supabase
+    .from("events")
+    .select("id, event_type, bonus_multiplier, start_date, end_date, title, description")
+    .gte("end_date", new Date().toISOString())
+    .order("start_date", { ascending: false })
+    .limit(20);
+  if (error) throw error;
+  return data || [];
+}
+
+export async function createEvent(event: {
+  event_type: string;
+  bonus_multiplier: number;
+  start_date: string;
+  end_date: string;
+  title: string;
+  description: string;
+  type: string;
+  multiplier: number;
+  starts_at: string;
+  ends_at: string;
+}): Promise<void> {
+  const { error } = await supabase.from("events").insert(event);
+  if (error) throw error;
+}
+
+export async function deleteEvent(id: string): Promise<void> {
+  const { error } = await supabase.from("events").delete().eq("id", id);
+  if (error) throw error;
+}
