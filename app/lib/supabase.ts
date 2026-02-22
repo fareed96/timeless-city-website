@@ -82,3 +82,57 @@ export async function deleteEvent(id: string): Promise<void> {
   const { error } = await supabase.from("events").delete().eq("id", id);
   if (error) throw error;
 }
+
+// ─── Seasonal Events ───
+
+export interface RewardTier {
+  min_rank: number;
+  max_rank: number;
+  gems: number;
+  gold: number;
+  chest_type: string;
+}
+
+export interface SeasonalEventRow {
+  id: string;
+  name: string;
+  theme: string;
+  start_date: string;
+  end_date: string;
+  chest_costs: number[];
+  is_active: boolean;
+  reward_tiers: RewardTier[];
+}
+
+export async function fetchSeasonalEvents(): Promise<SeasonalEventRow[]> {
+  const { data, error } = await supabase
+    .from("seasonal_events")
+    .select("*")
+    .order("start_date", { ascending: false })
+    .limit(20);
+  if (error) throw error;
+  return data || [];
+}
+
+export async function createSeasonalEvent(event: {
+  name: string;
+  theme: string;
+  start_date: string;
+  end_date: string;
+  chest_costs: number[];
+  is_active: boolean;
+  reward_tiers: RewardTier[];
+}): Promise<void> {
+  const { error } = await supabase.from("seasonal_events").insert(event);
+  if (error) throw error;
+}
+
+export async function deleteSeasonalEvent(id: string): Promise<void> {
+  const { error } = await supabase.from("seasonal_events").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function toggleSeasonalEvent(id: string, isActive: boolean): Promise<void> {
+  const { error } = await supabase.from("seasonal_events").update({ is_active: isActive }).eq("id", id);
+  if (error) throw error;
+}

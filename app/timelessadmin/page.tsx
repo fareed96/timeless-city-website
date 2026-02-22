@@ -7,10 +7,15 @@ import {
   fetchActiveEvents,
   createEvent,
   deleteEvent,
+  fetchSeasonalEvents,
+  createSeasonalEvent,
+  deleteSeasonalEvent,
+  toggleSeasonalEvent,
   type GameConfigRow,
   type RarityWeights,
   type RarityPresets,
   type EventRow,
+  type SeasonalEventRow,
 } from "../lib/supabase";
 
 // ─── Constants ───
@@ -42,7 +47,7 @@ export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState("");
   const [authError, setAuthError] = useState(false);
-  const [activeTab, setActiveTab] = useState<"config" | "events">("config");
+  const [activeTab, setActiveTab] = useState<"config" | "events" | "seasons">("config");
 
   const handleLogin = () => {
     if (password === ADMIN_PASSWORD) {
@@ -98,6 +103,16 @@ export default function AdminPage() {
               >
                 📅 Events
               </button>
+              <button
+                onClick={() => setActiveTab("seasons")}
+                className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${
+                  activeTab === "seasons"
+                    ? "bg-[#d4a853]/20 text-[#d4a853]"
+                    : "text-white/40 hover:text-white/60"
+                }`}
+              >
+                🏆 Seasons
+              </button>
             </div>
             <button
               onClick={() => {
@@ -113,7 +128,7 @@ export default function AdminPage() {
       </header>
 
       <main className="max-w-6xl mx-auto px-6 py-8">
-        {activeTab === "config" ? <ConfigPanel /> : <EventsPanel />}
+        {activeTab === "config" ? <ConfigPanel /> : activeTab === "events" ? <EventsPanel /> : <SeasonsPanel />}
       </main>
     </div>
   );
@@ -573,6 +588,314 @@ function EventsPanel() {
                     {event.bonus_multiplier?.toFixed(1) || "1.0"}x
                   </span>
                   <button onClick={() => handleDelete(event.id)}
+                    className="text-red-400/50 hover:text-red-400 transition-colors p-1">
+                    🗑️
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </Section>
+    </div>
+  );
+}
+
+// ─── Seasons Panel ───
+
+const SEASON_THEMES = [
+  { value: "medieval_festival", label: "Medieval Festival", icon: "👑", color: "text-yellow-400" },
+  { value: "dragon_siege", label: "Dragon Siege", icon: "🔥", color: "text-red-400" },
+  { value: "harvest_moon", label: "Harvest Moon", icon: "🌙", color: "text-orange-400" },
+  { value: "frost_kingdom", label: "Frost Kingdom", icon: "❄️", color: "text-cyan-400" },
+  { value: "shadow_war", label: "Shadow War", icon: "🛡️", color: "text-purple-400" },
+] as const;
+
+function SeasonsPanel() {
+  const [seasons, setSeasons] = useState<SeasonalEventRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const [selectedTheme, setSelectedTheme] = useState("medieval_festival");
+  const [seasonName, setSeasonName] = useState("Medieval Festival");
+  const [durationDays, setDurationDays] = useState(7);
+  const [chestCosts, setChestCosts] = useState([1, 3, 6, 12]);
+  const [rewardTiers, setRewardTiers] = useState<import("../lib/supabase").RewardTier[]>([
+    { min_rank: 1, max_rank: 1, gems: 50, gold: 5000, chest_type: "premium" },
+    { min_rank: 2, max_rank: 3, gems: 30, gold: 3000, chest_type: "red" },
+    { min_rank: 4, max_rank: 10, gems: 15, gold: 1500, chest_type: "emerald" },
+    { min_rank: 11, max_rank: 50, gems: 5, gold: 500, chest_type: "wood" },
+  ]);
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 2500);
+  };
+
+  const loadSeasons = useCallback(async () => {
+    try {
+      const rows = await fetchSeasonalEvents();
+      setSeasons(rows);
+    } catch (e: any) {
+      showToast("Failed to load seasons: " + e.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadSeasons(); }, [loadSeasons]);
+
+  const handleCreate = async () => {
+    setCreating(true);
+    try {
+      const now = new Date();
+      const end = new Date(now.getTime() + durationDays * 24 * 3600 * 1000);
+
+      await createSeasonalEvent({
+        name: seasonName,
+        theme: selectedTheme,
+        start_date: now.toISOString(),
+        end_date: end.toISOString(),
+        chest_costs: chestCosts,
+        is_active: true,
+        reward_tiers: rewardTiers,
+      });
+
+      showToast("✅ Season created!");
+      await loadSeasons();
+    } catch (e: any) {
+      showToast(`❌ Error: ${e.message}`);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteSeasonalEvent(id);
+      showToast("🗑️ Season deleted");
+      await loadSeasons();
+    } catch (e: any) {
+      showToast(`❌ Error: ${e.message}`);
+    }
+  };
+
+  const handleToggle = async (id: string, current: boolean) => {
+    try {
+      await toggleSeasonalEvent(id, !current);
+      showToast(current ? "⏸️ Season deactivated" : "▶️ Season activated");
+      await loadSeasons();
+    } catch (e: any) {
+      showToast(`❌ Error: ${e.message}`);
+    }
+  };
+
+  const timeRemaining = (endDate: string) => {
+    const remaining = Math.max(0, Math.floor((new Date(endDate).getTime() - Date.now()) / 1000));
+    if (remaining <= 0) return "Ended";
+    const days = Math.floor(remaining / 86400);
+    const hours = Math.floor((remaining % 86400) / 3600);
+    if (days > 0) return `${days}d ${hours}h`;
+    return `${hours}h`;
+  };
+
+  const chestNames = ["🪵 Wood", "💚 Emerald", "❤️ Royal", "👑 Legendary"];
+
+  return (
+    <div className="space-y-8">
+      {toast && (
+        <div className="fixed top-20 right-4 bg-[#1a1a25] border border-[#d4a853]/30 text-white px-4 py-2 rounded-lg shadow-lg z-50 animate-fade-in-up">
+          {toast}
+        </div>
+      )}
+
+      {/* Create Season */}
+      <Section title="🏆 Create Seasonal Event">
+        {/* Theme Grid */}
+        <div className="mb-6">
+          <label className="text-sm text-white/40 mb-2 block">Theme</label>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+            {SEASON_THEMES.map((theme) => (
+              <button key={theme.value} onClick={() => {
+                setSelectedTheme(theme.value);
+                setSeasonName(theme.label);
+              }}
+                className={`flex flex-col items-center gap-1 px-3 py-3 rounded-lg border text-sm font-bold transition-all ${
+                  selectedTheme === theme.value
+                    ? "bg-[#d4a853]/15 border-[#d4a853]/50 text-[#d4a853]"
+                    : "bg-white/5 border-white/10 text-white/50 hover:border-white/20"
+                }`}>
+                <span className="text-xl">{theme.icon}</span>
+                <span className="text-xs">{theme.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Season Name */}
+        <div className="mb-6">
+          <label className="text-sm text-white/40 mb-2 block">Season Name</label>
+          <input
+            type="text" value={seasonName}
+            onChange={(e) => setSeasonName(e.target.value)}
+            className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-[#d4a853]/50 focus:outline-none"
+            placeholder="e.g. Dragon Siege Season 1"
+          />
+        </div>
+
+        {/* Duration */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-sm text-white/40">Duration</label>
+            <span className="text-sm font-bold text-[#d4a853] font-mono">{durationDays} days</span>
+          </div>
+          <input type="range" min={1} max={30} step={1} value={durationDays}
+            onChange={(e) => setDurationDays(parseInt(e.target.value))}
+            className="w-full accent-[#d4a853] h-2 bg-white/10 rounded-full appearance-none cursor-pointer" />
+          <div className="flex justify-between text-xs text-white/20 mt-1">
+            <span>1 day</span><span>30 days</span>
+          </div>
+        </div>
+
+        {/* Chest Key Costs */}
+        <div className="mb-6">
+          <label className="text-sm text-white/40 mb-3 block">Chest Key Costs</label>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {chestNames.map((name, i) => (
+              <div key={name} className="space-y-1">
+                <label className="text-xs text-white/40">{name}</label>
+                <input
+                  type="number" min={1} max={50} value={chestCosts[i]}
+                  onChange={(e) => {
+                    const arr = [...chestCosts];
+                    arr[i] = parseInt(e.target.value) || 1;
+                    setChestCosts(arr);
+                  }}
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-[#d4a853]/50 focus:outline-none"
+                />
+                <p className="text-xs text-white/20">{chestCosts[i]} 🔑</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Leaderboard Reward Tiers */}
+        <div className="mb-6">
+          <label className="text-sm text-white/40 mb-3 block">🏅 Leaderboard Reward Tiers</label>
+          <div className="space-y-3">
+            {rewardTiers.map((tier, i) => (
+              <div key={i} className="grid grid-cols-6 gap-2 items-center p-3 bg-white/5 rounded-lg border border-white/10">
+                <div className="col-span-6 md:col-span-1">
+                  <label className="text-xs text-white/30">Rank</label>
+                  <div className="flex gap-1 items-center">
+                    <input type="number" min={1} value={tier.min_rank}
+                      onChange={(e) => { const arr = [...rewardTiers]; arr[i] = { ...arr[i], min_rank: parseInt(e.target.value) || 1 }; setRewardTiers(arr); }}
+                      className="w-14 bg-white/5 border border-white/10 rounded px-2 py-1 text-white text-sm focus:border-[#d4a853]/50 focus:outline-none" />
+                    <span className="text-white/30 text-xs">–</span>
+                    <input type="number" min={1} value={tier.max_rank}
+                      onChange={(e) => { const arr = [...rewardTiers]; arr[i] = { ...arr[i], max_rank: parseInt(e.target.value) || 1 }; setRewardTiers(arr); }}
+                      className="w-14 bg-white/5 border border-white/10 rounded px-2 py-1 text-white text-sm focus:border-[#d4a853]/50 focus:outline-none" />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs text-white/30">💎 Gems</label>
+                  <input type="number" min={0} value={tier.gems}
+                    onChange={(e) => { const arr = [...rewardTiers]; arr[i] = { ...arr[i], gems: parseInt(e.target.value) || 0 }; setRewardTiers(arr); }}
+                    className="w-full bg-white/5 border border-white/10 rounded px-2 py-1 text-white text-sm focus:border-[#d4a853]/50 focus:outline-none" />
+                </div>
+                <div>
+                  <label className="text-xs text-white/30">💰 Gold</label>
+                  <input type="number" min={0} value={tier.gold}
+                    onChange={(e) => { const arr = [...rewardTiers]; arr[i] = { ...arr[i], gold: parseInt(e.target.value) || 0 }; setRewardTiers(arr); }}
+                    className="w-full bg-white/5 border border-white/10 rounded px-2 py-1 text-white text-sm focus:border-[#d4a853]/50 focus:outline-none" />
+                </div>
+                <div>
+                  <label className="text-xs text-white/30">📦 Chest</label>
+                  <select value={tier.chest_type}
+                    onChange={(e) => { const arr = [...rewardTiers]; arr[i] = { ...arr[i], chest_type: e.target.value }; setRewardTiers(arr); }}
+                    className="w-full bg-white/5 border border-white/10 rounded px-2 py-1 text-white text-sm focus:border-[#d4a853]/50 focus:outline-none">
+                    <option value="wood">Wood</option>
+                    <option value="emerald">Emerald</option>
+                    <option value="red">Royal</option>
+                    <option value="premium">Legendary</option>
+                    <option value="none">None</option>
+                  </select>
+                </div>
+                <div className="flex items-end">
+                  <button onClick={() => setRewardTiers(rewardTiers.filter((_, j) => j !== i))}
+                    className="text-red-400/50 hover:text-red-400 text-sm p-1 transition-colors">✕</button>
+                </div>
+              </div>
+            ))}
+            <button onClick={() => setRewardTiers([...rewardTiers, { min_rank: rewardTiers.length > 0 ? (rewardTiers[rewardTiers.length-1].max_rank + 1) : 1, max_rank: 100, gems: 5, gold: 500, chest_type: "wood" }])}
+              className="w-full py-2 border border-dashed border-white/20 rounded-lg text-white/40 text-sm hover:border-[#d4a853]/40 hover:text-[#d4a853]/60 transition-colors">
+              + Add Reward Tier
+            </button>
+          </div>
+        </div>
+
+        {/* Preview */}
+        <div className="flex items-center gap-4 p-3 bg-white/5 rounded-lg mb-6">
+          <span className="text-2xl">{SEASON_THEMES.find((t) => t.value === selectedTheme)?.icon}</span>
+          <div>
+            <p className="font-bold text-white">{seasonName}</p>
+            <p className="text-xs text-white/40">{durationDays} days · Chests: {chestCosts.join(" / ")} 🔑 · {rewardTiers.length} reward tiers</p>
+          </div>
+        </div>
+
+        <button onClick={handleCreate} disabled={creating || !seasonName.trim()}
+          className="w-full bg-[#d4a853] text-[#0a0a0f] font-bold py-3 rounded-xl hover:bg-[#e8c97a] transition-colors disabled:opacity-50 text-lg">
+          {creating ? "Creating..." : "🏆 Launch Season"}
+        </button>
+      </Section>
+
+      {/* Active Seasons */}
+      <Section title="📋 Seasonal Events" trailing={
+        <button onClick={() => { setLoading(true); loadSeasons(); }}
+          className="text-sm text-[#d4a853]/60 hover:text-[#d4a853] transition-colors">
+          ↻ Refresh
+        </button>
+      }>
+        {loading ? (
+          <div className="text-center py-8 text-[#d4a853] animate-pulse">Loading seasons...</div>
+        ) : seasons.length === 0 ? (
+          <div className="text-center py-8">
+            <div className="text-4xl mb-2 opacity-20">🏆</div>
+            <p className="text-white/30 text-sm">No seasonal events</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {seasons.map((season) => {
+              const themeInfo = SEASON_THEMES.find((t) => t.value === season.theme);
+              const isEnded = new Date(season.end_date).getTime() < Date.now();
+              return (
+                <div key={season.id} className={`flex items-center gap-4 p-4 border rounded-xl transition-all ${
+                  season.is_active && !isEnded
+                    ? "bg-[#d4a853]/5 border-[#d4a853]/30"
+                    : "bg-white/5 border-white/10 opacity-60"
+                }`}>
+                  <span className="text-2xl">{themeInfo?.icon || "🏆"}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-white truncate">{season.name}</p>
+                    <p className="text-xs text-white/40">
+                      {themeInfo?.label || season.theme} · {isEnded ? "Ended" : timeRemaining(season.end_date) + " left"}
+                    </p>
+                    <p className="text-xs text-white/30 mt-0.5">
+                      Chests: {(season.chest_costs || [1,3,6,12]).join(" / ")} 🔑
+                    </p>
+                  </div>
+                  <span className={`text-xs font-bold px-2 py-1 rounded-full ${
+                    season.is_active && !isEnded ? "bg-green-500/20 text-green-400" : "bg-white/10 text-white/30"
+                  }`}>
+                    {season.is_active && !isEnded ? "ACTIVE" : isEnded ? "ENDED" : "PAUSED"}
+                  </span>
+                  <button onClick={() => handleToggle(season.id, season.is_active)}
+                    className="text-sm text-white/40 hover:text-[#d4a853] transition-colors p-1"
+                    title={season.is_active ? "Deactivate" : "Activate"}>
+                    {season.is_active ? "⏸️" : "▶️"}
+                  </button>
+                  <button onClick={() => handleDelete(season.id)}
                     className="text-red-400/50 hover:text-red-400 transition-colors p-1">
                     🗑️
                   </button>
