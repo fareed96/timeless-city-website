@@ -263,7 +263,6 @@ function CharacterCard({
   title,
   quote,
   image,
-  color,
   glowColor,
   delay,
 }: {
@@ -271,35 +270,44 @@ function CharacterCard({
   title: string;
   quote: string;
   image: string;
-  color: string;
+  color?: string;
   glowColor: string;
   delay: string;
 }) {
   return (
     <AnimateIn delay={delay}>
-      <div
-        className="group relative rounded-2xl p-[1px] hover:-translate-y-2 transition-all duration-500"
-        style={{ background: `linear-gradient(135deg, ${glowColor}33, transparent 60%)` }}
-      >
-        {/* Inner glow on hover */}
-        <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" style={{ boxShadow: `inset 0 0 30px ${glowColor}15, 0 0 20px ${glowColor}10` }} />
+      <div className="group relative flex flex-col items-center text-center">
+        {/* Floating character image — no box, no border */}
+        <div className="relative z-10 -mb-12">
+          {/* Glow behind character */}
+          <div
+            className="absolute bottom-0 left-1/2 -translate-x-1/2 w-28 h-12 rounded-full blur-2xl opacity-40 group-hover:opacity-70 transition-opacity duration-500"
+            style={{ background: glowColor }}
+          />
+          {/* Character PNG — transparent bg shines through */}
+          <Image
+            src={image}
+            alt={name}
+            width={160}
+            height={200}
+            className="w-28 h-36 md:w-32 md:h-40 object-contain drop-shadow-2xl group-hover:scale-110 group-hover:-translate-y-2 transition-all duration-500"
+          />
+        </div>
 
-        <div className="relative bg-gradient-to-br from-[#0d0d18] to-[#0a0a0f] rounded-2xl p-5 overflow-hidden">
-          {/* Corner ornaments */}
-          <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 rounded-tl-2xl" style={{ borderColor: `${glowColor}40` }} />
-          <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 rounded-br-2xl" style={{ borderColor: `${glowColor}40` }} />
+        {/* Info card below character */}
+        <div
+          className="relative w-full pt-14 pb-5 px-5 rounded-2xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-sm group-hover:border-opacity-100 transition-all duration-500"
+          style={{ borderColor: `${glowColor}15` }}
+        >
+          {/* Subtle top glow line */}
+          <div
+            className="absolute top-0 left-1/2 -translate-x-1/2 w-16 h-[2px] rounded-full opacity-50 group-hover:opacity-100 group-hover:w-24 transition-all duration-500"
+            style={{ background: `linear-gradient(90deg, transparent, ${glowColor}, transparent)` }}
+          />
 
-          <div className="flex items-start gap-4">
-            <div className={`relative w-16 h-16 md:w-20 md:h-20 rounded-xl overflow-hidden border-2 ${color} flex-shrink-0 group-hover:scale-105 transition-transform duration-500`}>
-              <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent z-10" />
-              <Image src={image} alt={name} width={80} height={80} className="w-full h-full object-cover" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="font-[family-name:var(--font-heading)] text-white font-bold text-base">{name}</h3>
-              <p className="text-xs mb-2" style={{ color: glowColor }}>{title}</p>
-              <p className="text-white/40 text-sm leading-relaxed italic">&ldquo;{quote}&rdquo;</p>
-            </div>
-          </div>
+          <h3 className="font-[family-name:var(--font-heading)] text-white font-bold text-base mb-0.5">{name}</h3>
+          <p className="text-xs font-semibold tracking-wider uppercase mb-3" style={{ color: glowColor }}>{title}</p>
+          <p className="text-white/35 text-sm leading-relaxed italic">&ldquo;{quote}&rdquo;</p>
         </div>
       </div>
     </AnimateIn>
@@ -602,7 +610,7 @@ function CharactersSection() {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-5">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
           <CharacterCard
             name="King Aldric"
             title="The Weary Ruler"
