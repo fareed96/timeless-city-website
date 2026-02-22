@@ -18,8 +18,73 @@ import {
   Scroll,
   Gem,
   Castle,
+  Pickaxe,
+  Mountain,
 } from "lucide-react";
 import Link from "next/link";
+import { createContext, useContext } from "react";
+
+/* ═══════════════════════════════════════════
+   MODE CONTEXT
+   ═══════════════════════════════════════════ */
+
+type GameMode = "slot" | "mining";
+const ModeContext = createContext<{ mode: GameMode; setMode: (m: GameMode) => void }>({ mode: "slot", setMode: () => {} });
+const useMode = () => useContext(ModeContext);
+
+/* ═══════════════════════════════════════════
+   SCROLL-TRIGGERED ANIMATION HOOK
+   ═══════════════════════════════════════════ */
+
+function useInView(threshold = 0.15) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setVisible(true); obs.disconnect(); } }, { threshold });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [threshold]);
+  return { ref, visible };
+}
+
+function AnimateIn({ children, delay = "0s", className = "" }: { children: React.ReactNode; delay?: string; className?: string }) {
+  const { ref, visible } = useInView();
+  return (
+    <div ref={ref} className={`transition-all duration-700 ${visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"} ${className}`} style={{ transitionDelay: delay }}>
+      {children}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   MODE TOGGLE PILL
+   ═══════════════════════════════════════════ */
+
+function ModeToggle() {
+  const { mode, setMode } = useMode();
+  return (
+    <div className="inline-flex items-center gap-1 p-1 rounded-full glass border border-[#d4a853]/20">
+      <button
+        onClick={() => setMode("slot")}
+        className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold transition-all duration-300 ${
+          mode === "slot" ? "bg-[#d4a853]/20 text-[#d4a853] shadow-inner" : "text-white/40 hover:text-white/60"
+        }`}
+      >
+        <Sparkles className="w-3.5 h-3.5" /> Fortune
+      </button>
+      <button
+        onClick={() => setMode("mining")}
+        className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold transition-all duration-300 ${
+          mode === "mining" ? "bg-[#d4a853]/20 text-[#d4a853] shadow-inner" : "text-white/40 hover:text-white/60"
+        }`}
+      >
+        <Pickaxe className="w-3.5 h-3.5" /> Mining
+      </button>
+    </div>
+  );
+}
 
 /* ═══════════════════════════════════════════
    SLOT MINI-GAME
@@ -108,6 +173,88 @@ function MiniSlot() {
 }
 
 /* ═══════════════════════════════════════════
+   MINING MINI-GAME
+   ═══════════════════════════════════════════ */
+
+const MINE_ICONS = ["💎", "🪙", "⛏️", "🪨", "🔥", "🛡️", "📜", "💀"];
+const MINE_HIDDEN = "🪨";
+
+function MiniMine() {
+  const [grid, setGrid] = useState<string[]>(Array(9).fill(""));
+  const [revealed, setRevealed] = useState<boolean[]>(Array(9).fill(false));
+  const [picks, setPicks] = useState(0);
+  const [result, setResult] = useState<string | null>(null);
+
+  useEffect(() => {
+    setGrid(Array(9).fill("").map(() => MINE_ICONS[Math.floor(Math.random() * MINE_ICONS.length)]));
+  }, []);
+
+  const dig = (i: number) => {
+    if (revealed[i]) return;
+    const newRevealed = [...revealed];
+    newRevealed[i] = true;
+    setRevealed(newRevealed);
+    setPicks((p) => p + 1);
+
+    if (grid[i] === "💎") setResult("Gem found! 💎");
+    else if (grid[i] === "💀") setResult("Trap! 💀");
+    else if (grid[i] === "🪙") setResult("Gold! 🪙");
+    else setResult(null);
+  };
+
+  const reset = () => {
+    setGrid(Array(9).fill("").map(() => MINE_ICONS[Math.floor(Math.random() * MINE_ICONS.length)]));
+    setRevealed(Array(9).fill(false));
+    setPicks(0);
+    setResult(null);
+  };
+
+  return (
+    <div className="relative">
+      <div className="bg-gradient-to-b from-[#1a1008] to-[#0d0a05] border border-[#d4a853]/20 rounded-3xl p-6 md:p-8 max-w-sm mx-auto">
+        <div className="text-center mb-4">
+          <p className="text-[#d4a853] text-xs font-bold tracking-widest uppercase">Deep Mine</p>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          {grid.map((icon, i) => (
+            <button
+              key={i}
+              onClick={() => dig(i)}
+              disabled={revealed[i]}
+              className={`w-full aspect-square rounded-xl text-2xl md:text-3xl flex items-center justify-center transition-all duration-300 ${
+                revealed[i]
+                  ? "bg-[#1a1428] border-2 border-[#d4a853]/30 scale-95"
+                  : "bg-[#0a0a0f] border-2 border-white/10 hover:border-[#d4a853]/40 hover:scale-105 cursor-pointer"
+              }`}
+            >
+              {revealed[i] ? icon : MINE_HIDDEN}
+            </button>
+          ))}
+        </div>
+
+        {result && (
+          <div className="text-center mb-3 animate-bounce">
+            <span className="text-[#d4a853] font-bold text-lg">{result}</span>
+          </div>
+        )}
+
+        <button
+          onClick={reset}
+          className="w-full py-3.5 bg-gradient-to-r from-[#8b6914] to-[#d4a853] text-[#0a0a0f] font-bold text-lg rounded-2xl hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg shadow-[#d4a853]/20"
+        >
+          ⛏️ NEW MINE
+        </button>
+
+        <p className="text-center text-white/20 text-xs mt-3">
+          {picks} pick{picks !== 1 ? "s" : ""} — Tap to dig!
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════
    CHARACTER CARD
    ═══════════════════════════════════════════ */
 
@@ -117,6 +264,7 @@ function CharacterCard({
   quote,
   image,
   color,
+  glowColor,
   delay,
 }: {
   name: string;
@@ -124,24 +272,37 @@ function CharacterCard({
   quote: string;
   image: string;
   color: string;
+  glowColor: string;
   delay: string;
 }) {
   return (
-    <div
-      className="group relative bg-white/[0.03] border border-white/10 rounded-2xl p-5 hover:border-[#d4a853]/30 transition-all duration-500 hover:-translate-y-2 animate-fade-in-up"
-      style={{ animationDelay: delay }}
-    >
-      <div className="flex items-start gap-4">
-        <div className={`w-16 h-16 md:w-20 md:h-20 rounded-xl overflow-hidden border-2 ${color} flex-shrink-0`}>
-          <Image src={image} alt={name} width={80} height={80} className="w-full h-full object-cover" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <h3 className="font-[family-name:var(--font-heading)] text-white font-bold text-base">{name}</h3>
-          <p className="text-[#d4a853] text-xs mb-2">{title}</p>
-          <p className="text-white/40 text-sm leading-relaxed italic">&ldquo;{quote}&rdquo;</p>
+    <AnimateIn delay={delay}>
+      <div
+        className="group relative rounded-2xl p-[1px] hover:-translate-y-2 transition-all duration-500"
+        style={{ background: `linear-gradient(135deg, ${glowColor}33, transparent 60%)` }}
+      >
+        {/* Inner glow on hover */}
+        <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" style={{ boxShadow: `inset 0 0 30px ${glowColor}15, 0 0 20px ${glowColor}10` }} />
+
+        <div className="relative bg-gradient-to-br from-[#0d0d18] to-[#0a0a0f] rounded-2xl p-5 overflow-hidden">
+          {/* Corner ornaments */}
+          <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 rounded-tl-2xl" style={{ borderColor: `${glowColor}40` }} />
+          <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 rounded-br-2xl" style={{ borderColor: `${glowColor}40` }} />
+
+          <div className="flex items-start gap-4">
+            <div className={`relative w-16 h-16 md:w-20 md:h-20 rounded-xl overflow-hidden border-2 ${color} flex-shrink-0 group-hover:scale-105 transition-transform duration-500`}>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent z-10" />
+              <Image src={image} alt={name} width={80} height={80} className="w-full h-full object-cover" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-[family-name:var(--font-heading)] text-white font-bold text-base">{name}</h3>
+              <p className="text-xs mb-2" style={{ color: glowColor }}>{title}</p>
+              <p className="text-white/40 text-sm leading-relaxed italic">&ldquo;{quote}&rdquo;</p>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+    </AnimateIn>
   );
 }
 
@@ -222,12 +383,15 @@ function Navbar() {
    ═══════════════════════════════════════════ */
 
 function HeroSection() {
+  const { mode } = useMode();
+  const isSlot = mode === "slot";
+
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-16">
       <div className="absolute inset-0">
         <div className="absolute inset-0 bg-gradient-to-b from-[#0a0a0f] via-[#0d0d18] to-[#0a0a0f]" />
-        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#d4a853]/5 rounded-full blur-[150px]" />
-        <div className="absolute bottom-1/4 right-1/4 w-[300px] h-[300px] bg-[#8b2020]/5 rounded-full blur-[100px]" />
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[min(600px,100vw)] h-[600px] bg-[#d4a853]/5 rounded-full blur-[150px] pointer-events-none" />
+        <div className="absolute bottom-1/4 right-1/4 w-[min(300px,80vw)] h-[300px] bg-[#8b2020]/5 rounded-full blur-[100px] pointer-events-none" />
       </div>
 
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -249,29 +413,42 @@ function HeroSection() {
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           {/* Left: Text */}
           <div className="text-center lg:text-left">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass text-xs text-[#d4a853] mb-6 animate-fade-in-up">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>A kingdom lies in ruins. Will you rebuild it?</span>
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass text-xs text-[#d4a853] mb-4 animate-fade-in-up">
+              {isSlot ? <Sparkles className="w-3.5 h-3.5" /> : <Pickaxe className="w-3.5 h-3.5" />}
+              <span>{isSlot ? "A kingdom lies in ruins. Will you rebuild it?" : "Ancient mines hold untold riches. Will you dig deep?"}</span>
+            </div>
+
+            <div className="mb-6 animate-fade-in-up">
+              <ModeToggle />
             </div>
 
             <h1
               className="font-[family-name:var(--font-heading)] text-4xl md:text-6xl lg:text-7xl font-bold leading-[1.1] mb-6 animate-fade-in-up"
               style={{ animationDelay: "0.15s" }}
             >
-              <span className="text-white">The Wheel</span>
-              <br />
-              <span className="text-white">Spins.</span>
-              <br />
-              <span className="gold-text">Fate Answers.</span>
+              {isSlot ? (
+                <>
+                  <span className="text-white">The Wheel</span><br />
+                  <span className="text-white">Spins.</span><br />
+                  <span className="gold-text">Fate Answers.</span>
+                </>
+              ) : (
+                <>
+                  <span className="text-white">The Depths</span><br />
+                  <span className="text-white">Call.</span><br />
+                  <span className="gold-text">Fortune Awaits.</span>
+                </>
+              )}
             </h1>
 
             <p
               className="text-base md:text-lg text-white/50 max-w-lg mb-8 leading-relaxed animate-fade-in-up"
               style={{ animationDelay: "0.3s" }}
             >
-              Deep beneath a fallen castle lies the Wheel of Fortune — an ancient device
-              that spins gold from nothing. King Aldric needs a champion.
-              <span className="text-[#d4a853]"> That champion is you.</span>
+              {isSlot
+                ? <>Deep beneath a fallen castle lies the Wheel of Fortune — an ancient device that spins gold from nothing. King Aldric needs a champion.<span className="text-[#d4a853]"> That champion is you.</span></>
+                : <>Beneath the ruins lie ancient mines filled with gold, gems, relics, and traps. Every pick of the axe reveals a new fortune — or danger.<span className="text-[#d4a853]"> Dig deep, champion.</span></>
+              }
             </p>
 
             <div
@@ -313,9 +490,9 @@ function HeroSection() {
             </div>
           </div>
 
-          {/* Right: Mini Slot Game */}
+          {/* Right: Mini Game (switches with mode) */}
           <div className="animate-fade-in-up" style={{ animationDelay: "0.3s" }}>
-            <MiniSlot />
+            {isSlot ? <MiniSlot /> : <MiniMine />}
           </div>
         </div>
       </div>
@@ -332,48 +509,73 @@ function HeroSection() {
    ═══════════════════════════════════════════ */
 
 function StorySection() {
+  const { mode } = useMode();
+  const isSlot = mode === "slot";
+
   return (
     <section id="story" className="relative py-24 md:py-32 overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#d4a853]/[0.02] to-transparent" />
 
       <div className="relative max-w-4xl mx-auto px-6">
-        <div className="text-center mb-16">
-          <div className="ornament-divider max-w-xs mx-auto mb-6">
-            <Scroll className="w-4 h-4 text-[#d4a853]/50" />
+        <AnimateIn>
+          <div className="text-center mb-16">
+            <div className="ornament-divider max-w-xs mx-auto mb-6">
+              <Scroll className="w-4 h-4 text-[#d4a853]/50" />
+            </div>
+            <h2 className="font-[family-name:var(--font-heading)] text-3xl md:text-5xl font-bold mb-4">
+              <span className="gold-text">The Chronicle</span>
+            </h2>
+            <p className="text-white/40 max-w-lg mx-auto text-sm md:text-base">
+              {isSlot ? "Nine story arcs. One destiny. Every spin writes a new chapter." : "Nine story arcs. One destiny. Every dig uncovers a new chapter."}
+            </p>
           </div>
-          <h2 className="font-[family-name:var(--font-heading)] text-3xl md:text-5xl font-bold mb-4">
-            <span className="gold-text">The Chronicle</span>
-          </h2>
-          <p className="text-white/40 max-w-lg mx-auto text-sm md:text-base">
-            Nine story arcs. One destiny. Every spin writes a new chapter.
-          </p>
-        </div>
+        </AnimateIn>
 
         {/* Opening narrative */}
-        <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-6 md:p-8 mb-12">
-          <div className="flex items-start gap-4">
-            <Image src="/game/King.png" alt="King Aldric" width={64} height={64} className="w-14 h-14 md:w-16 md:h-16 rounded-xl border-2 border-[#d4a853]/30 object-cover flex-shrink-0" />
-            <div>
-              <p className="text-[#d4a853] text-xs font-bold mb-1">King Aldric</p>
-              <p className="text-white/60 text-sm md:text-base leading-relaxed italic">
-                &ldquo;Welcome, brave soul. My kingdom lies in ruins — war, famine, and dark magic have torn it apart.
-                I have waited long for someone like you. Will you take up this burden? Will you restore what was lost?&rdquo;
-              </p>
+        <AnimateIn delay="0.1s">
+          <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-6 md:p-8 mb-12">
+            <div className="flex items-start gap-4">
+              <Image src="/game/King.png" alt="King Aldric" width={64} height={64} className="w-14 h-14 md:w-16 md:h-16 rounded-xl border-2 border-[#d4a853]/30 object-cover flex-shrink-0" />
+              <div>
+                <p className="text-[#d4a853] text-xs font-bold mb-1">King Aldric</p>
+                <p className="text-white/60 text-sm md:text-base leading-relaxed italic">
+                  {isSlot
+                    ? <>&ldquo;Welcome, brave soul. My kingdom lies in ruins — war, famine, and dark magic have torn it apart. I have waited long for someone like you. Will you take up this burden? Will you restore what was lost?&rdquo;</>
+                    : <>&ldquo;Welcome, brave soul. Beneath our ruined city lie ancient mines — rich with gold, gems, and secrets. I need someone bold enough to dig into the darkness. Will you descend for the kingdom?&rdquo;</>
+                  }
+                </p>
+              </div>
             </div>
           </div>
-        </div>
+        </AnimateIn>
 
         {/* Story arcs timeline */}
         <div className="space-y-0">
-          <StoryArc number="I" title="The Fallen Kingdom" teaser="A ruined city, a desperate king, and a mysterious Wheel of Fortune hidden beneath the castle. Your journey begins with a single spin." icon={<Crown className="w-4 h-4" />} delay="0s" />
-          <StoryArc number="II" title="Shadows at the Border" teaser="Your growing wealth attracts dark forces. Raiders wearing the sigil of a forgotten house march toward your walls. Train soldiers — quickly." icon={<Swords className="w-4 h-4" />} delay="0.1s" />
-          <StoryArc number="III" title="The Wizard's Secret" teaser="Merwyn confesses: he created the Wheel centuries ago with forbidden magic. It consumed a kingdom once before. And it's learning from you." icon={<Sparkles className="w-4 h-4" />} delay="0.2s" />
-          <StoryArc number="IV" title="The Pretender" teaser="A man claiming to be Prince Edric — lost son of King Thorn — appears with an army. His claim to the throne may be legitimate." icon={<Shield className="w-4 h-4" />} delay="0.3s" />
-          <StoryArc number="V" title="The Dark Wheel" teaser="The Wheel is alive. It feeds on ambition, on desire, on the spinning itself. It whispers to Merwyn, asking to be set free." icon={<Zap className="w-4 h-4" />} delay="0.4s" />
-          <StoryArc number="VI" title="War of Crowns" teaser="The Pretender's army marches. Merwyn offers to unlock the Wheel's full power — but the cost would bind it to the city forever." icon={<Swords className="w-4 h-4" />} delay="0.5s" />
-          <StoryArc number="VII" title="The Endless Throne" teaser="Other kingdoms with their own Wheels emerge. The age of isolated kingdoms ends. A new age begins — the Age of Wheels." icon={<Castle className="w-4 h-4" />} delay="0.6s" />
-          <StoryArc number="VIII" title="The Sword & The Anvil" teaser="Sir Aldric the Knight and Master Borin the Blacksmith join your cause. New allies, new powers, new forges to master." icon={<Star className="w-4 h-4" />} delay="0.7s" />
-          <StoryArc number="IX" title="The Medallion's Call" teaser="A mysterious medallion pulses with ancient power. The reputation system awakens. Your rank among rulers is about to change everything." icon={<Gem className="w-4 h-4" />} delay="0.8s" />
+          {isSlot ? (
+            <>
+              <StoryArc number="I" title="The Fallen Kingdom" teaser="A ruined city, a desperate king, and a mysterious Wheel of Fortune hidden beneath the castle. Your journey begins with a single spin." icon={<Crown className="w-4 h-4" />} delay="0s" />
+              <StoryArc number="II" title="Shadows at the Border" teaser="Your growing wealth attracts dark forces. Raiders wearing the sigil of a forgotten house march toward your walls. Train soldiers — quickly." icon={<Swords className="w-4 h-4" />} delay="0.1s" />
+              <StoryArc number="III" title="The Wizard's Secret" teaser="Merwyn confesses: he created the Wheel centuries ago with forbidden magic. It consumed a kingdom once before. And it's learning from you." icon={<Sparkles className="w-4 h-4" />} delay="0.2s" />
+              <StoryArc number="IV" title="The Pretender" teaser="A man claiming to be Prince Edric — lost son of King Thorn — appears with an army. His claim to the throne may be legitimate." icon={<Shield className="w-4 h-4" />} delay="0.3s" />
+              <StoryArc number="V" title="The Dark Wheel" teaser="The Wheel is alive. It feeds on ambition, on desire, on the spinning itself. It whispers to Merwyn, asking to be set free." icon={<Zap className="w-4 h-4" />} delay="0.4s" />
+              <StoryArc number="VI" title="War of Crowns" teaser="The Pretender's army marches. Merwyn offers to unlock the Wheel's full power — but the cost would bind it to the city forever." icon={<Swords className="w-4 h-4" />} delay="0.5s" />
+              <StoryArc number="VII" title="The Endless Throne" teaser="Other kingdoms with their own Wheels emerge. The age of isolated kingdoms ends. A new age begins — the Age of Wheels." icon={<Castle className="w-4 h-4" />} delay="0.6s" />
+              <StoryArc number="VIII" title="The Sword & The Anvil" teaser="Sir Aldric the Knight and Master Borin the Blacksmith join your cause. New allies, new powers, new forges to master." icon={<Star className="w-4 h-4" />} delay="0.7s" />
+              <StoryArc number="IX" title="The Medallion's Call" teaser="A mysterious medallion pulses with ancient power. The reputation system awakens. Your rank among rulers is about to change everything." icon={<Gem className="w-4 h-4" />} delay="0.8s" />
+            </>
+          ) : (
+            <>
+              <StoryArc number="I" title="The Fallen Kingdom" teaser="A ruined city, a desperate king, and ancient mines hidden beneath the castle. Your journey begins with a single pick." icon={<Crown className="w-4 h-4" />} delay="0s" />
+              <StoryArc number="II" title="Shadows in the Tunnels" teaser="Your growing riches attract dark forces. Strange creatures stir in the deeper tunnels. Arm yourself — quickly." icon={<Swords className="w-4 h-4" />} delay="0.1s" />
+              <StoryArc number="III" title="The Wizard's Secret" teaser="Merwyn confesses: he opened the mines centuries ago with forbidden magic. Something ancient sleeps below. And it's waking." icon={<Sparkles className="w-4 h-4" />} delay="0.2s" />
+              <StoryArc number="IV" title="The Pretender" teaser="A man claiming to be Prince Edric appears with an army. He wants the mines — and the throne. His claim may be legitimate." icon={<Shield className="w-4 h-4" />} delay="0.3s" />
+              <StoryArc number="V" title="The Living Mine" teaser="The mine is alive. It shifts, grows, and reshapes itself. It feeds on ambition and whispers to those who dig too deep." icon={<Zap className="w-4 h-4" />} delay="0.4s" />
+              <StoryArc number="VI" title="War of Crowns" teaser="The Pretender's army marches. Merwyn offers to unlock the mine's deepest vein — but the cost would bind it to the city forever." icon={<Swords className="w-4 h-4" />} delay="0.5s" />
+              <StoryArc number="VII" title="The Endless Depths" teaser="Other kingdoms with their own mines emerge. The age of isolated kingdoms ends. A new age begins — the Age of Depths." icon={<Castle className="w-4 h-4" />} delay="0.6s" />
+              <StoryArc number="VIII" title="The Sword & The Anvil" teaser="Sir Aldric the Knight and Master Borin the Blacksmith join your cause. New allies, new forges, new ores to master." icon={<Star className="w-4 h-4" />} delay="0.7s" />
+              <StoryArc number="IX" title="The Medallion's Call" teaser="A mysterious medallion pulses with ancient power deep in the mines. Your rank among rulers is about to change everything." icon={<Gem className="w-4 h-4" />} delay="0.8s" />
+            </>
+          )}
         </div>
       </div>
     </section>
@@ -407,6 +609,7 @@ function CharactersSection() {
             quote="I am old and weary. I cannot rebuild alone. Will you take up this burden?"
             image="/game/King.png"
             color="border-[#d4a853]/40"
+            glowColor="#d4a853"
             delay="0s"
           />
           <CharacterCard
@@ -415,6 +618,7 @@ function CharactersSection() {
             quote="I created the Wheel. Centuries ago, with magic that should never have been used."
             image="/game/Wizard.png"
             color="border-purple-500/40"
+            glowColor="#a855f7"
             delay="0.1s"
           />
           <CharacterCard
@@ -423,6 +627,7 @@ function CharactersSection() {
             quote="A true ruler must know the art of war. I shall advise you in all matters of battle."
             image="/game/Knight.png"
             color="border-red-500/40"
+            glowColor="#ef4444"
             delay="0.2s"
           />
           <CharacterCard
@@ -431,6 +636,7 @@ function CharactersSection() {
             quote="Every great kingdom was built on steel and fire. Bring me your cards — I'll forge them into something greater."
             image="/game/Blacksmith.png"
             color="border-orange-500/40"
+            glowColor="#f97316"
             delay="0.3s"
           />
         </div>
@@ -444,7 +650,10 @@ function CharactersSection() {
    ═══════════════════════════════════════════ */
 
 function FeaturesSection() {
-  const features = [
+  const { mode } = useMode();
+  const isSlot = mode === "slot";
+
+  const slotFeatures = [
     { icon: <Dices className="w-6 h-6" />, title: "Spin the Wheel", desc: "An ancient device that spins gold from nothing. Match symbols for gold, troops, gems, and rare rewards." },
     { icon: <Building2 className="w-6 h-6" />, title: "Build Your City", desc: "Construct taverns, barracks, farms, and more. Each building shapes your economy and defense." },
     { icon: <Swords className="w-6 h-6" />, title: "Wage War", desc: "Train armies, find opponents, and fight for glory. Mini-games add skill-based combat bonuses." },
@@ -453,36 +662,47 @@ function FeaturesSection() {
     { icon: <Users className="w-6 h-6" />, title: "Compete Globally", desc: "Leaderboards for Wealth, Power, and Army. Prove you are the greatest lord in the realm." },
   ];
 
+  const miningFeatures = [
+    { icon: <Pickaxe className="w-6 h-6" />, title: "Dig the Depths", desc: "Tap tiles to reveal gold, gems, relics, and traps. Every pick is a gamble — fortune or danger." },
+    { icon: <Building2 className="w-6 h-6" />, title: "Build Your City", desc: "Use mined resources to construct taverns, barracks, farms, and more. Shape your economy." },
+    { icon: <Swords className="w-6 h-6" />, title: "Wage War", desc: "Train armies with troop tokens found in the mines. Fight for glory with skill-based combat." },
+    { icon: <Mountain className="w-6 h-6" />, title: "Explore Deeper", desc: "Surface, Tunnels, Caverns — each depth level offers richer rewards and greater dangers." },
+    { icon: <Gem className="w-6 h-6" />, title: "Find Rare Cards", desc: "Discover card packs hidden in the mines. Collect and forge powerful cards to boost your kingdom." },
+    { icon: <Users className="w-6 h-6" />, title: "Compete Globally", desc: "Leaderboards for Wealth, Power, and Army. Prove you are the greatest lord in the realm." },
+  ];
+
+  const features = isSlot ? slotFeatures : miningFeatures;
+
   return (
     <section id="play" className="relative py-24 md:py-32 overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#d4a853]/[0.02] to-transparent" />
 
       <div className="relative max-w-6xl mx-auto px-6">
-        <div className="text-center mb-16">
-          <div className="ornament-divider max-w-xs mx-auto mb-6">
-            <Zap className="w-4 h-4 text-[#d4a853]/50" />
+        <AnimateIn>
+          <div className="text-center mb-16">
+            <div className="ornament-divider max-w-xs mx-auto mb-6">
+              <Zap className="w-4 h-4 text-[#d4a853]/50" />
+            </div>
+            <h2 className="font-[family-name:var(--font-heading)] text-3xl md:text-5xl font-bold mb-4">
+              <span className="gold-text">Forge Your Legacy</span>
+            </h2>
+            <p className="text-white/40 max-w-lg mx-auto text-sm md:text-base">
+              {isSlot ? "Four pillars of gameplay. One seamless medieval experience." : "Mine, build, battle, and conquer. The depths hold your destiny."}
+            </p>
           </div>
-          <h2 className="font-[family-name:var(--font-heading)] text-3xl md:text-5xl font-bold mb-4">
-            <span className="gold-text">Forge Your Legacy</span>
-          </h2>
-          <p className="text-white/40 max-w-lg mx-auto text-sm md:text-base">
-            Four pillars of gameplay. One seamless medieval experience.
-          </p>
-        </div>
+        </AnimateIn>
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {features.map((f, i) => (
-            <div
-              key={f.title}
-              className="group p-6 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-[#d4a853]/30 transition-all duration-300 hover:-translate-y-1 animate-fade-in-up"
-              style={{ animationDelay: `${i * 0.08}s` }}
-            >
-              <div className="w-12 h-12 rounded-xl bg-[#d4a853]/10 flex items-center justify-center text-[#d4a853] mb-4 group-hover:bg-[#d4a853]/20 transition-colors">
-                {f.icon}
+            <AnimateIn key={f.title} delay={`${i * 0.08}s`}>
+              <div className="group p-6 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-[#d4a853]/30 transition-all duration-300 hover:-translate-y-1">
+                <div className="w-12 h-12 rounded-xl bg-[#d4a853]/10 flex items-center justify-center text-[#d4a853] mb-4 group-hover:bg-[#d4a853]/20 transition-colors">
+                  {f.icon}
+                </div>
+                <h3 className="font-[family-name:var(--font-heading)] text-base font-semibold text-white mb-2">{f.title}</h3>
+                <p className="text-sm text-white/35 leading-relaxed">{f.desc}</p>
               </div>
-              <h3 className="font-[family-name:var(--font-heading)] text-base font-semibold text-white mb-2">{f.title}</h3>
-              <p className="text-sm text-white/35 leading-relaxed">{f.desc}</p>
-            </div>
+            </AnimateIn>
           ))}
         </div>
       </div>
@@ -495,19 +715,28 @@ function FeaturesSection() {
    ═══════════════════════════════════════════ */
 
 function WizardQuote() {
+  const { mode } = useMode();
+  const isSlot = mode === "slot";
+
   return (
     <section className="relative py-20 overflow-hidden">
       <div className="absolute inset-0">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-purple-900/10 rounded-full blur-[120px]" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[min(500px,100vw)] h-[500px] bg-purple-900/10 rounded-full blur-[120px] pointer-events-none" />
       </div>
-      <div className="relative max-w-3xl mx-auto px-6 text-center">
-        <Image src="/game/Wizard.png" alt="Merwyn" width={80} height={80} className="w-20 h-20 rounded-full border-2 border-purple-500/30 mx-auto mb-6 object-cover" />
-        <blockquote className="font-[family-name:var(--font-heading)] text-xl md:text-2xl text-white/70 leading-relaxed italic mb-4">
-          &ldquo;The Wheel is not just a machine of fortune. It is alive. It feeds on ambition,
-          on desire, on the spinning itself. Every turn makes it stronger.&rdquo;
-        </blockquote>
-        <p className="text-[#d4a853]/60 text-sm">— Merwyn the Wizard, Arc V: The Dark Wheel</p>
-      </div>
+      <AnimateIn>
+        <div className="relative max-w-3xl mx-auto px-6 text-center">
+          <Image src="/game/Wizard.png" alt="Merwyn" width={80} height={80} className="w-20 h-20 rounded-full border-2 border-purple-500/30 mx-auto mb-6 object-cover" />
+          <blockquote className="font-[family-name:var(--font-heading)] text-xl md:text-2xl text-white/70 leading-relaxed italic mb-4">
+            {isSlot
+              ? <>&ldquo;The Wheel is not just a machine of fortune. It is alive. It feeds on ambition, on desire, on the spinning itself. Every turn makes it stronger.&rdquo;</>
+              : <>&ldquo;The mines are not mere tunnels of stone. They breathe, they shift, they remember. Every pick awakens something deeper. Dig wisely.&rdquo;</>
+            }
+          </blockquote>
+          <p className="text-[#d4a853]/60 text-sm">
+            {isSlot ? "— Merwyn the Wizard, Arc V: The Dark Wheel" : "— Merwyn the Wizard, Arc V: The Living Mine"}
+          </p>
+        </div>
+      </AnimateIn>
     </section>
   );
 }
@@ -520,21 +749,21 @@ function DownloadSection() {
   return (
     <section id="download" className="relative py-24 md:py-32">
       <div className="absolute inset-0">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#d4a853]/5 rounded-full blur-[150px]" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[min(600px,100vw)] h-[600px] bg-[#d4a853]/5 rounded-full blur-[150px] pointer-events-none" />
       </div>
 
-      <div className="relative max-w-3xl mx-auto px-6 text-center">
-        <Image src="/game/Crown.png" alt="Crown" width={80} height={80} className="w-20 h-20 mx-auto mb-8 animate-float object-contain" />
+      <AnimateIn>
+        <div className="relative max-w-3xl mx-auto px-6 text-center">
+          <Image src="/game/Crown.png" alt="Crown" width={80} height={80} className="w-20 h-20 mx-auto mb-8 animate-float object-contain" />
 
-        <h2 className="font-[family-name:var(--font-heading)] text-3xl md:text-5xl font-bold mb-6">
-          <span className="text-white">Your Throne</span>{" "}
-          <span className="gold-text">Awaits</span>
-        </h2>
+          <h2 className="font-[family-name:var(--font-heading)] text-3xl md:text-5xl font-bold mb-6">
+            <span className="text-white">Your Throne</span>{" "}
+            <span className="gold-text">Awaits</span>
+          </h2>
 
-        <p className="text-white/40 max-w-lg mx-auto mb-10 leading-relaxed text-sm md:text-base">
-          The Wheel of Fortune spins beneath the castle. King Aldric waits for his champion.
-          Download free and begin your reign today.
-        </p>
+          <p className="text-white/40 max-w-lg mx-auto mb-10 leading-relaxed text-sm md:text-base">
+            King Aldric waits for his champion. Download free and begin your reign today.
+          </p>
 
         <a
           href="https://apps.apple.com/app/timeless-city"
@@ -552,7 +781,8 @@ function DownloadSection() {
         <p className="text-xs text-white/20 mt-6">
           Requires iOS 17.0 or later. Free with optional in-app purchases.
         </p>
-      </div>
+        </div>
+      </AnimateIn>
     </section>
   );
 }
@@ -592,8 +822,10 @@ function Footer() {
    ═══════════════════════════════════════════ */
 
 export default function Home() {
+  const [mode, setMode] = useState<GameMode>("slot");
+
   return (
-    <>
+    <ModeContext.Provider value={{ mode, setMode }}>
       <Navbar />
       <main>
         <HeroSection />
@@ -604,6 +836,6 @@ export default function Home() {
         <DownloadSection />
       </main>
       <Footer />
-    </>
+    </ModeContext.Provider>
   );
 }

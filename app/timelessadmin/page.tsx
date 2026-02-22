@@ -187,6 +187,8 @@ function ConfigPanel() {
   const [dupeCostMultiplier, setDupeCostMultiplier] = useState(1.2);
   const [cardPackBoost, setCardPackBoost] = useState(0.0);
   const [presets, setPresets] = useState<RarityPresets>(DEFAULT_PRESETS);
+  const [repWeights, setRepWeights] = useState({ population: 1.2, happiness: 1.8, building_count: 15.0, attack: 0.6, defense: 0.8 });
+  const [rankThresholds, setRankThresholds] = useState([0, 50, 150, 400, 800, 1500, 3000, 6000, 12000, 25000]);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -204,6 +206,8 @@ function ConfigPanel() {
           case "duplicate_cost_multiplier": setDupeCostMultiplier(Number(row.value)); break;
           case "cardpack_boost": setCardPackBoost(Number(row.value)); break;
           case "rarity_presets": setPresets(row.value as RarityPresets); break;
+          case "reputation_weights": setRepWeights(row.value as typeof repWeights); break;
+          case "rank_thresholds": setRankThresholds(row.value as number[]); break;
         }
       }
     } catch (e: any) {
@@ -325,6 +329,48 @@ function ConfigPanel() {
             await save("duplicate_cost_multiplier", dupeCostMultiplier);
             await save("cardpack_boost", cardPackBoost);
           }} />
+      </Section>
+
+      {/* Reputation Weights */}
+      <Section title="⭐ Reputation Weights">
+        <p className="text-white/30 text-xs mb-4">Controls how each stat contributes to reputation score. Higher = more impact.</p>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
+          {(["population", "happiness", "building_count", "attack", "defense"] as const).map((key) => (
+            <div key={key} className="space-y-1">
+              <label className="text-sm text-white/40 capitalize">{key.replace(/_/g, " ")}</label>
+              <input
+                type="number" step={0.1} min={0} max={50} value={repWeights[key]}
+                onChange={(e) => setRepWeights({ ...repWeights, [key]: parseFloat(e.target.value) || 0 })}
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-[#d4a853]/50 focus:outline-none"
+              />
+            </div>
+          ))}
+        </div>
+        <SaveButton label="Save Reputation Weights" saving={saving === "reputation_weights"}
+          onClick={() => save("reputation_weights", repWeights)} />
+      </Section>
+
+      {/* Rank Thresholds */}
+      <Section title="🏅 Rank Thresholds">
+        <p className="text-white/30 text-xs mb-4">Reputation score needed for each rank (10 ranks: Wanderer → Emperor).</p>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
+          {["Wanderer","Settler","Merchant","Baron","Viscount","Earl","Duke","Archduke","King","Emperor"].map((name, i) => (
+            <div key={name} className="space-y-1">
+              <label className="text-xs text-white/40">{name}</label>
+              <input
+                type="number" min={0} value={rankThresholds[i] ?? 0}
+                onChange={(e) => {
+                  const arr = [...rankThresholds];
+                  arr[i] = parseInt(e.target.value) || 0;
+                  setRankThresholds(arr);
+                }}
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-[#d4a853]/50 focus:outline-none"
+              />
+            </div>
+          ))}
+        </div>
+        <SaveButton label="Save Thresholds" saving={saving === "rank_thresholds"}
+          onClick={() => save("rank_thresholds", rankThresholds)} />
       </Section>
 
       {/* Live Preview */}
