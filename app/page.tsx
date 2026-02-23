@@ -2,27 +2,25 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
-import {
-  Crown,
-  Swords,
-  Building2,
-  Dices,
-  Trophy,
-  Shield,
-  ChevronDown,
-  Star,
-  Zap,
-  Users,
-  Sparkles,
-  Apple,
-  Scroll,
-  Gem,
-  Castle,
-  Pickaxe,
-  Mountain,
-} from "lucide-react";
+import { ChevronDown, Apple } from "lucide-react";
 import Link from "next/link";
 import { createContext, useContext } from "react";
+
+/* ═══════════════════════════════════════════
+   GAME ICON COMPONENT
+   ═══════════════════════════════════════════ */
+
+function GameIcon({ name, className = "w-6 h-6" }: { name: string; className?: string }) {
+  return (
+    <Image
+      src={`/game/icons/${name}.svg`}
+      alt={name}
+      width={24}
+      height={24}
+      className={`${className} object-contain`}
+    />
+  );
+}
 
 /* ═══════════════════════════════════════════
    MODE CONTEXT
@@ -72,7 +70,7 @@ function ModeToggle() {
           mode === "slot" ? "bg-[#d4a853]/20 text-[#d4a853] shadow-inner" : "text-white/40 hover:text-white/60"
         }`}
       >
-        <Sparkles className="w-3.5 h-3.5" /> Fortune
+        <GameIcon name="icon-sparkle" className="w-3.5 h-3.5" /> Fortune
       </button>
       <button
         onClick={() => setMode("mining")}
@@ -80,7 +78,7 @@ function ModeToggle() {
           mode === "mining" ? "bg-[#d4a853]/20 text-[#d4a853] shadow-inner" : "text-white/40 hover:text-white/60"
         }`}
       >
-        <Pickaxe className="w-3.5 h-3.5" /> Mining
+        <GameIcon name="icon-pickaxe" className="w-3.5 h-3.5" /> Mining
       </button>
     </div>
   );
@@ -422,7 +420,7 @@ function HeroSection() {
           {/* Left: Text */}
           <div className="text-center lg:text-left">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass text-xs text-[#d4a853] mb-4 animate-fade-in-up">
-              {isSlot ? <Sparkles className="w-3.5 h-3.5" /> : <Pickaxe className="w-3.5 h-3.5" />}
+              {isSlot ? <GameIcon name="icon-sparkle" className="w-3.5 h-3.5" /> : <GameIcon name="icon-pickaxe" className="w-3.5 h-3.5" />}
               <span>{isSlot ? "A kingdom lies in ruins. Will you rebuild it?" : "Ancient mines hold untold riches. Will you dig deep?"}</span>
             </div>
 
@@ -474,7 +472,7 @@ function HeroSection() {
                 href="#story"
                 className="flex items-center gap-2 px-6 py-4 glass rounded-2xl text-white/60 hover:text-white transition-colors"
               >
-                <Scroll className="w-4 h-4" />
+                <GameIcon name="icon-scroll" className="w-4 h-4" />
                 <span>Read the Story</span>
               </a>
             </div>
@@ -528,7 +526,7 @@ function StorySection() {
         <AnimateIn>
           <div className="text-center mb-16">
             <div className="ornament-divider max-w-xs mx-auto mb-6">
-              <Scroll className="w-4 h-4 text-[#d4a853]/50" />
+              <GameIcon name="icon-scroll" className="w-4 h-4" />
             </div>
             <h2 className="font-[family-name:var(--font-heading)] text-3xl md:text-5xl font-bold mb-4">
               <span className="gold-text">The Chronicle</span>
@@ -561,27 +559,27 @@ function StorySection() {
         <div className="space-y-0">
           {isSlot ? (
             <>
-              <StoryArc number="I" title="The Fallen Kingdom" teaser="A ruined city, a desperate king, and a mysterious Wheel of Fortune hidden beneath the castle. Your journey begins with a single spin." icon={<Crown className="w-4 h-4" />} delay="0s" />
-              <StoryArc number="II" title="Shadows at the Border" teaser="Your growing wealth attracts dark forces. Raiders wearing the sigil of a forgotten house march toward your walls. Train soldiers — quickly." icon={<Swords className="w-4 h-4" />} delay="0.1s" />
-              <StoryArc number="III" title="The Wizard's Secret" teaser="Merwyn confesses: he created the Wheel centuries ago with forbidden magic. It consumed a kingdom once before. And it's learning from you." icon={<Sparkles className="w-4 h-4" />} delay="0.2s" />
-              <StoryArc number="IV" title="The Pretender" teaser="A man claiming to be Prince Edric — lost son of King Thorn — appears with an army. His claim to the throne may be legitimate." icon={<Shield className="w-4 h-4" />} delay="0.3s" />
-              <StoryArc number="V" title="The Dark Wheel" teaser="The Wheel is alive. It feeds on ambition, on desire, on the spinning itself. It whispers to Merwyn, asking to be set free." icon={<Zap className="w-4 h-4" />} delay="0.4s" />
-              <StoryArc number="VI" title="War of Crowns" teaser="The Pretender's army marches. Merwyn offers to unlock the Wheel's full power — but the cost would bind it to the city forever." icon={<Swords className="w-4 h-4" />} delay="0.5s" />
-              <StoryArc number="VII" title="The Endless Throne" teaser="Other kingdoms with their own Wheels emerge. The age of isolated kingdoms ends. A new age begins — the Age of Wheels." icon={<Castle className="w-4 h-4" />} delay="0.6s" />
-              <StoryArc number="VIII" title="The Sword & The Anvil" teaser="Sir Aldric the Knight and Master Borin the Blacksmith join your cause. New allies, new powers, new forges to master." icon={<Star className="w-4 h-4" />} delay="0.7s" />
-              <StoryArc number="IX" title="The Medallion's Call" teaser="A mysterious medallion pulses with ancient power. The reputation system awakens. Your rank among rulers is about to change everything." icon={<Gem className="w-4 h-4" />} delay="0.8s" />
+              <StoryArc number="I" title="The Fallen Kingdom" teaser="A ruined city, a desperate king, and a mysterious Wheel of Fortune hidden beneath the castle. Your journey begins with a single spin." icon={<GameIcon name="icon-crown" className="w-4 h-4" />} delay="0s" />
+              <StoryArc number="II" title="Shadows at the Border" teaser="Your growing wealth attracts dark forces. Raiders wearing the sigil of a forgotten house march toward your walls. Train soldiers — quickly." icon={<GameIcon name="icon-swords" className="w-4 h-4" />} delay="0.1s" />
+              <StoryArc number="III" title="The Wizard's Secret" teaser="Merwyn confesses: he created the Wheel centuries ago with forbidden magic. It consumed a kingdom once before. And it's learning from you." icon={<GameIcon name="icon-sparkle" className="w-4 h-4" />} delay="0.2s" />
+              <StoryArc number="IV" title="The Pretender" teaser="A man claiming to be Prince Edric — lost son of King Thorn — appears with an army. His claim to the throne may be legitimate." icon={<GameIcon name="icon-shield" className="w-4 h-4" />} delay="0.3s" />
+              <StoryArc number="V" title="The Dark Wheel" teaser="The Wheel is alive. It feeds on ambition, on desire, on the spinning itself. It whispers to Merwyn, asking to be set free." icon={<GameIcon name="icon-energy" className="w-4 h-4" />} delay="0.4s" />
+              <StoryArc number="VI" title="War of Crowns" teaser="The Pretender's army marches. Merwyn offers to unlock the Wheel's full power — but the cost would bind it to the city forever." icon={<GameIcon name="icon-swords" className="w-4 h-4" />} delay="0.5s" />
+              <StoryArc number="VII" title="The Endless Throne" teaser="Other kingdoms with their own Wheels emerge. The age of isolated kingdoms ends. A new age begins — the Age of Wheels." icon={<GameIcon name="icon-castle" className="w-4 h-4" />} delay="0.6s" />
+              <StoryArc number="VIII" title="The Sword & The Anvil" teaser="Sir Aldric the Knight and Master Borin the Blacksmith join your cause. New allies, new powers, new forges to master." icon={<GameIcon name="icon-star" className="w-4 h-4" />} delay="0.7s" />
+              <StoryArc number="IX" title="The Medallion's Call" teaser="A mysterious medallion pulses with ancient power. The reputation system awakens. Your rank among rulers is about to change everything." icon={<GameIcon name="icon-gem" className="w-4 h-4" />} delay="0.8s" />
             </>
           ) : (
             <>
-              <StoryArc number="I" title="The Fallen Kingdom" teaser="A ruined city, a desperate king, and ancient mines hidden beneath the castle. Your journey begins with a single pick." icon={<Crown className="w-4 h-4" />} delay="0s" />
-              <StoryArc number="II" title="Shadows in the Tunnels" teaser="Your growing riches attract dark forces. Strange creatures stir in the deeper tunnels. Arm yourself — quickly." icon={<Swords className="w-4 h-4" />} delay="0.1s" />
-              <StoryArc number="III" title="The Wizard's Secret" teaser="Merwyn confesses: he opened the mines centuries ago with forbidden magic. Something ancient sleeps below. And it's waking." icon={<Sparkles className="w-4 h-4" />} delay="0.2s" />
-              <StoryArc number="IV" title="The Pretender" teaser="A man claiming to be Prince Edric appears with an army. He wants the mines — and the throne. His claim may be legitimate." icon={<Shield className="w-4 h-4" />} delay="0.3s" />
-              <StoryArc number="V" title="The Living Mine" teaser="The mine is alive. It shifts, grows, and reshapes itself. It feeds on ambition and whispers to those who dig too deep." icon={<Zap className="w-4 h-4" />} delay="0.4s" />
-              <StoryArc number="VI" title="War of Crowns" teaser="The Pretender's army marches. Merwyn offers to unlock the mine's deepest vein — but the cost would bind it to the city forever." icon={<Swords className="w-4 h-4" />} delay="0.5s" />
-              <StoryArc number="VII" title="The Endless Depths" teaser="Other kingdoms with their own mines emerge. The age of isolated kingdoms ends. A new age begins — the Age of Depths." icon={<Castle className="w-4 h-4" />} delay="0.6s" />
-              <StoryArc number="VIII" title="The Sword & The Anvil" teaser="Sir Aldric the Knight and Master Borin the Blacksmith join your cause. New allies, new forges, new ores to master." icon={<Star className="w-4 h-4" />} delay="0.7s" />
-              <StoryArc number="IX" title="The Medallion's Call" teaser="A mysterious medallion pulses with ancient power deep in the mines. Your rank among rulers is about to change everything." icon={<Gem className="w-4 h-4" />} delay="0.8s" />
+              <StoryArc number="I" title="The Fallen Kingdom" teaser="A ruined city, a desperate king, and ancient mines hidden beneath the castle. Your journey begins with a single pick." icon={<GameIcon name="icon-crown" className="w-4 h-4" />} delay="0s" />
+              <StoryArc number="II" title="Shadows in the Tunnels" teaser="Your growing riches attract dark forces. Strange creatures stir in the deeper tunnels. Arm yourself — quickly." icon={<GameIcon name="icon-swords" className="w-4 h-4" />} delay="0.1s" />
+              <StoryArc number="III" title="The Wizard's Secret" teaser="Merwyn confesses: he opened the mines centuries ago with forbidden magic. Something ancient sleeps below. And it's waking." icon={<GameIcon name="icon-sparkle" className="w-4 h-4" />} delay="0.2s" />
+              <StoryArc number="IV" title="The Pretender" teaser="A man claiming to be Prince Edric appears with an army. He wants the mines — and the throne. His claim may be legitimate." icon={<GameIcon name="icon-shield" className="w-4 h-4" />} delay="0.3s" />
+              <StoryArc number="V" title="The Living Mine" teaser="The mine is alive. It shifts, grows, and reshapes itself. It feeds on ambition and whispers to those who dig too deep." icon={<GameIcon name="icon-energy" className="w-4 h-4" />} delay="0.4s" />
+              <StoryArc number="VI" title="War of Crowns" teaser="The Pretender's army marches. Merwyn offers to unlock the mine's deepest vein — but the cost would bind it to the city forever." icon={<GameIcon name="icon-swords" className="w-4 h-4" />} delay="0.5s" />
+              <StoryArc number="VII" title="The Endless Depths" teaser="Other kingdoms with their own mines emerge. The age of isolated kingdoms ends. A new age begins — the Age of Depths." icon={<GameIcon name="icon-castle" className="w-4 h-4" />} delay="0.6s" />
+              <StoryArc number="VIII" title="The Sword & The Anvil" teaser="Sir Aldric the Knight and Master Borin the Blacksmith join your cause. New allies, new forges, new ores to master." icon={<GameIcon name="icon-star" className="w-4 h-4" />} delay="0.7s" />
+              <StoryArc number="IX" title="The Medallion's Call" teaser="A mysterious medallion pulses with ancient power deep in the mines. Your rank among rulers is about to change everything." icon={<GameIcon name="icon-gem" className="w-4 h-4" />} delay="0.8s" />
             </>
           )}
         </div>
@@ -600,7 +598,7 @@ function CharactersSection() {
       <div className="max-w-5xl mx-auto px-6">
         <div className="text-center mb-16">
           <div className="ornament-divider max-w-xs mx-auto mb-6">
-            <Users className="w-4 h-4 text-[#d4a853]/50" />
+            <GameIcon name="icon-army" className="w-4 h-4" />
           </div>
           <h2 className="font-[family-name:var(--font-heading)] text-3xl md:text-5xl font-bold mb-4">
             <span className="gold-text">Your Allies</span>
@@ -662,21 +660,21 @@ function FeaturesSection() {
   const isSlot = mode === "slot";
 
   const slotFeatures = [
-    { icon: <Dices className="w-6 h-6" />, title: "Spin the Wheel", desc: "An ancient device that spins gold from nothing. Match symbols for gold, troops, gems, and rare rewards." },
-    { icon: <Building2 className="w-6 h-6" />, title: "Build Your City", desc: "Construct taverns, barracks, farms, and more. Each building shapes your economy and defense." },
-    { icon: <Swords className="w-6 h-6" />, title: "Wage War", desc: "Train armies, find opponents, and fight for glory. Mini-games add skill-based combat bonuses." },
-    { icon: <Trophy className="w-6 h-6" />, title: "Rise in Rank", desc: "From Wanderer to Emperor — your reputation grows with every building, battle, and citizen." },
-    { icon: <Sparkles className="w-6 h-6" />, title: "Live Events", desc: "Gold Rush, Battle Frenzy, Harvest Feast — limited-time events with massive bonus multipliers." },
-    { icon: <Users className="w-6 h-6" />, title: "Compete Globally", desc: "Leaderboards for Wealth, Power, and Army. Prove you are the greatest lord in the realm." },
+    { icon: <GameIcon name="icon-spinner" className="w-6 h-6" />, title: "Spin the Wheel", desc: "An ancient device that spins gold from nothing. Match symbols for gold, troops, gems, and rare rewards." },
+    { icon: <GameIcon name="icon-castle" className="w-6 h-6" />, title: "Build Your City", desc: "Construct taverns, barracks, farms, and more. Each building shapes your economy and defense." },
+    { icon: <GameIcon name="icon-swords" className="w-6 h-6" />, title: "Wage War", desc: "Train armies, find opponents, and fight for glory. Mini-games add skill-based combat bonuses." },
+    { icon: <GameIcon name="icon-trophy" className="w-6 h-6" />, title: "Rise in Rank", desc: "From Wanderer to Emperor — your reputation grows with every building, battle, and citizen." },
+    { icon: <GameIcon name="icon-sparkle" className="w-6 h-6" />, title: "Live Events", desc: "Gold Rush, Battle Frenzy, Harvest Feast — limited-time events with massive bonus multipliers." },
+    { icon: <GameIcon name="icon-army" className="w-6 h-6" />, title: "Compete Globally", desc: "Leaderboards for Wealth, Power, and Army. Prove you are the greatest lord in the realm." },
   ];
 
   const miningFeatures = [
-    { icon: <Pickaxe className="w-6 h-6" />, title: "Dig the Depths", desc: "Tap tiles to reveal gold, gems, relics, and traps. Every pick is a gamble — fortune or danger." },
-    { icon: <Building2 className="w-6 h-6" />, title: "Build Your City", desc: "Use mined resources to construct taverns, barracks, farms, and more. Shape your economy." },
-    { icon: <Swords className="w-6 h-6" />, title: "Wage War", desc: "Train armies with troop tokens found in the mines. Fight for glory with skill-based combat." },
-    { icon: <Mountain className="w-6 h-6" />, title: "Explore Deeper", desc: "Surface, Tunnels, Caverns — each depth level offers richer rewards and greater dangers." },
-    { icon: <Gem className="w-6 h-6" />, title: "Find Rare Cards", desc: "Discover card packs hidden in the mines. Collect and forge powerful cards to boost your kingdom." },
-    { icon: <Users className="w-6 h-6" />, title: "Compete Globally", desc: "Leaderboards for Wealth, Power, and Army. Prove you are the greatest lord in the realm." },
+    { icon: <GameIcon name="icon-pickaxe" className="w-6 h-6" />, title: "Dig the Depths", desc: "Tap tiles to reveal gold, gems, relics, and traps. Every pick is a gamble — fortune or danger." },
+    { icon: <GameIcon name="icon-castle" className="w-6 h-6" />, title: "Build Your City", desc: "Use mined resources to construct taverns, barracks, farms, and more. Shape your economy." },
+    { icon: <GameIcon name="icon-swords" className="w-6 h-6" />, title: "Wage War", desc: "Train armies with troop tokens found in the mines. Fight for glory with skill-based combat." },
+    { icon: <GameIcon name="icon-mine" className="w-6 h-6" />, title: "Explore Deeper", desc: "Surface, Tunnels, Caverns — each depth level offers richer rewards and greater dangers." },
+    { icon: <GameIcon name="icon-gem" className="w-6 h-6" />, title: "Find Rare Cards", desc: "Discover card packs hidden in the mines. Collect and forge powerful cards to boost your kingdom." },
+    { icon: <GameIcon name="icon-army" className="w-6 h-6" />, title: "Compete Globally", desc: "Leaderboards for Wealth, Power, and Army. Prove you are the greatest lord in the realm." },
   ];
 
   const features = isSlot ? slotFeatures : miningFeatures;
@@ -689,7 +687,7 @@ function FeaturesSection() {
         <AnimateIn>
           <div className="text-center mb-16">
             <div className="ornament-divider max-w-xs mx-auto mb-6">
-              <Zap className="w-4 h-4 text-[#d4a853]/50" />
+              <GameIcon name="icon-energy" className="w-4 h-4" />
             </div>
             <h2 className="font-[family-name:var(--font-heading)] text-3xl md:text-5xl font-bold mb-4">
               <span className="gold-text">Forge Your Legacy</span>
