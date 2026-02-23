@@ -136,3 +136,132 @@ export async function toggleSeasonalEvent(id: string, isActive: boolean): Promis
   const { error } = await supabase.from("seasonal_events").update({ is_active: isActive }).eq("id", id);
   if (error) throw error;
 }
+
+// ─── Guilds ───
+
+export interface GuildRow {
+  id: string;
+  name: string;
+  description: string;
+  emblem_index: number;
+  is_open: boolean;
+  min_level: number;
+  leader_id: string;
+  created_at: string;
+  member_count?: number;
+}
+
+export interface GuildMemberRow {
+  id: string;
+  guild_id: string;
+  player_id: string;
+  role: string;
+  display_name: string;
+  weekly_contribution: number;
+  joined_at: string;
+}
+
+export async function fetchGuilds(): Promise<GuildRow[]> {
+  const { data, error } = await supabase
+    .from("guilds")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(50);
+  if (error) throw error;
+  return data || [];
+}
+
+export async function fetchGuildMembers(guildId: string): Promise<GuildMemberRow[]> {
+  const { data, error } = await supabase
+    .from("guild_members")
+    .select("*")
+    .eq("guild_id", guildId)
+    .order("role");
+  if (error) throw error;
+  return data || [];
+}
+
+export async function deleteGuild(id: string): Promise<void> {
+  const { error } = await supabase.from("guilds").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function removeGuildMember(memberId: string): Promise<void> {
+  const { error } = await supabase.from("guild_members").delete().eq("id", memberId);
+  if (error) throw error;
+}
+
+// ─── Leaderboard Rewards ───
+
+export interface LeaderboardSnapshotRow {
+  id: string;
+  player_id: string;
+  category: string;
+  rank: number;
+  score: number;
+  week_start: string;
+  reward_claimed: boolean;
+}
+
+export async function fetchLeaderboardSnapshots(): Promise<LeaderboardSnapshotRow[]> {
+  const { data, error } = await supabase
+    .from("leaderboard_weekly_snapshots")
+    .select("*")
+    .order("week_start", { ascending: false })
+    .limit(100);
+  if (error) throw error;
+  return data || [];
+}
+
+export async function createLeaderboardSnapshot(snapshot: {
+  player_id: string;
+  category: string;
+  rank: number;
+  score: number;
+  week_start: string;
+}): Promise<void> {
+  const { error } = await supabase.from("leaderboard_weekly_snapshots").insert(snapshot);
+  if (error) throw error;
+}
+
+// ─── Player Stats (for admin overview) ───
+
+export interface PlayerStatsRow {
+  id: string;
+  display_name: string;
+  gold: number;
+  gems: number;
+  total_spins: number;
+  created_at: string;
+}
+
+export async function fetchPlayerStats(): Promise<PlayerStatsRow[]> {
+  const { data, error } = await supabase
+    .from("players")
+    .select("id, display_name, gold, gems, total_spins, created_at")
+    .order("gold", { ascending: false })
+    .limit(50);
+  if (error) throw error;
+  return data || [];
+}
+
+// ─── Battle Stats (for admin) ───
+
+export interface BattleStatsRow {
+  id: string;
+  attacker_id: string;
+  defender_id: string;
+  attacker_won: boolean;
+  gold_looted: number;
+  created_at: string;
+}
+
+export async function fetchRecentBattles(): Promise<BattleStatsRow[]> {
+  const { data, error } = await supabase
+    .from("battles")
+    .select("id, attacker_id, defender_id, attacker_won, gold_looted, created_at")
+    .order("created_at", { ascending: false })
+    .limit(50);
+  if (error) throw error;
+  return data || [];
+}

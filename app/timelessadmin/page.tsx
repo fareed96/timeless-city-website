@@ -11,11 +11,21 @@ import {
   createSeasonalEvent,
   deleteSeasonalEvent,
   toggleSeasonalEvent,
+  fetchGuilds,
+  fetchGuildMembers,
+  deleteGuild,
+  removeGuildMember,
+  fetchPlayerStats,
+  fetchRecentBattles,
   type GameConfigRow,
   type RarityWeights,
   type RarityPresets,
   type EventRow,
   type SeasonalEventRow,
+  type GuildRow,
+  type GuildMemberRow,
+  type PlayerStatsRow,
+  type BattleStatsRow,
 } from "../lib/supabase";
 
 // ─── Constants ───
@@ -47,7 +57,7 @@ export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState("");
   const [authError, setAuthError] = useState(false);
-  const [activeTab, setActiveTab] = useState<"config" | "events" | "seasons">("config");
+  const [activeTab, setActiveTab] = useState<"config" | "events" | "seasons" | "guilds" | "players">("config");
 
   const handleLogin = () => {
     if (password === ADMIN_PASSWORD) {
@@ -113,6 +123,26 @@ export default function AdminPage() {
               >
                 🏆 Seasons
               </button>
+              <button
+                onClick={() => setActiveTab("guilds")}
+                className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${
+                  activeTab === "guilds"
+                    ? "bg-[#d4a853]/20 text-[#d4a853]"
+                    : "text-white/40 hover:text-white/60"
+                }`}
+              >
+                🏛️ Guilds
+              </button>
+              <button
+                onClick={() => setActiveTab("players")}
+                className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${
+                  activeTab === "players"
+                    ? "bg-[#d4a853]/20 text-[#d4a853]"
+                    : "text-white/40 hover:text-white/60"
+                }`}
+              >
+                👥 Players
+              </button>
             </div>
             <button
               onClick={() => {
@@ -128,7 +158,7 @@ export default function AdminPage() {
       </header>
 
       <main className="max-w-6xl mx-auto px-6 py-8">
-        {activeTab === "config" ? <ConfigPanel /> : activeTab === "events" ? <EventsPanel /> : <SeasonsPanel />}
+        {activeTab === "config" ? <ConfigPanel /> : activeTab === "events" ? <EventsPanel /> : activeTab === "seasons" ? <SeasonsPanel /> : activeTab === "guilds" ? <GuildsPanel /> : <PlayersPanel />}
       </main>
     </div>
   );
@@ -905,6 +935,343 @@ function SeasonsPanel() {
           </div>
         )}
       </Section>
+    </div>
+  );
+}
+
+// ─── Guilds Panel ───
+
+const GUILD_EMBLEMS = ["shield.fill", "crown.fill", "flame.fill", "bolt.fill", "star.fill", "leaf.fill", "drop.fill", "moon.fill", "sun.max.fill", "tornado", "snowflake", "sparkles"];
+const EMBLEM_DISPLAY = ["🛡️", "👑", "🔥", "⚡", "⭐", "🌿", "💧", "🌙", "☀️", "🌪️", "❄️", "✨"];
+
+function GuildsPanel() {
+  const [guilds, setGuilds] = useState<GuildRow[]>([]);
+  const [members, setMembers] = useState<GuildMemberRow[]>([]);
+  const [selectedGuild, setSelectedGuild] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 2500);
+  };
+
+  const loadGuilds = useCallback(async () => {
+    try {
+      const rows = await fetchGuilds();
+      setGuilds(rows);
+    } catch (e: any) {
+      showToast("Failed to load guilds: " + e.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadGuilds(); }, [loadGuilds]);
+
+  const handleSelectGuild = async (guildId: string) => {
+    if (selectedGuild === guildId) {
+      setSelectedGuild(null);
+      setMembers([]);
+      return;
+    }
+    setSelectedGuild(guildId);
+    try {
+      const rows = await fetchGuildMembers(guildId);
+      setMembers(rows);
+    } catch (e: any) {
+      showToast("Failed to load members: " + e.message);
+    }
+  };
+
+  const handleDeleteGuild = async (id: string) => {
+    if (!confirm("Delete this guild and all its members?")) return;
+    try {
+      await deleteGuild(id);
+      showToast("🗑️ Guild deleted");
+      setSelectedGuild(null);
+      setMembers([]);
+      await loadGuilds();
+    } catch (e: any) {
+      showToast(`❌ Error: ${e.message}`);
+    }
+  };
+
+  const handleRemoveMember = async (memberId: string) => {
+    try {
+      await removeGuildMember(memberId);
+      showToast("🗑️ Member removed");
+      if (selectedGuild) {
+        const rows = await fetchGuildMembers(selectedGuild);
+        setMembers(rows);
+      }
+    } catch (e: any) {
+      showToast(`❌ Error: ${e.message}`);
+    }
+  };
+
+  const roleColor = (role: string) => {
+    switch (role) {
+      case "leader": return "text-yellow-400";
+      case "officer": return "text-blue-400";
+      default: return "text-white/50";
+    }
+  };
+
+  const roleIcon = (role: string) => {
+    switch (role) {
+      case "leader": return "👑";
+      case "officer": return "⚔️";
+      default: return "🧑";
+    }
+  };
+
+  return (
+    <div className="space-y-8">
+      {toast && (
+        <div className="fixed top-20 right-4 bg-[#1a1a25] border border-[#d4a853]/30 text-white px-4 py-2 rounded-lg shadow-lg z-50 animate-fade-in-up">
+          {toast}
+        </div>
+      )}
+
+      <Section title="🏛️ All Guilds" trailing={
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-white/30">{guilds.length} guilds</span>
+          <button onClick={() => { setLoading(true); loadGuilds(); }}
+            className="text-sm text-[#d4a853]/60 hover:text-[#d4a853] transition-colors">
+            ↻ Refresh
+          </button>
+        </div>
+      }>
+        {loading ? (
+          <div className="text-center py-8 text-[#d4a853] animate-pulse">Loading guilds...</div>
+        ) : guilds.length === 0 ? (
+          <div className="text-center py-8">
+            <div className="text-4xl mb-2 opacity-20">🏛️</div>
+            <p className="text-white/30 text-sm">No guilds created yet</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {guilds.map((guild) => (
+              <div key={guild.id}>
+                <div
+                  className={`flex items-center gap-4 p-4 border rounded-xl cursor-pointer transition-all ${
+                    selectedGuild === guild.id
+                      ? "bg-[#d4a853]/10 border-[#d4a853]/40"
+                      : "bg-white/5 border-white/10 hover:border-white/20"
+                  }`}
+                  onClick={() => handleSelectGuild(guild.id)}
+                >
+                  <span className="text-2xl">{EMBLEM_DISPLAY[guild.emblem_index] || "🛡️"}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-white truncate">{guild.name}</p>
+                    <p className="text-xs text-white/40 truncate">{guild.description || "No description"}</p>
+                    <p className="text-xs text-white/30 mt-0.5">
+                      {guild.is_open ? "🔓 Open" : "🔒 Closed"} · Min Level: {guild.min_level}
+                    </p>
+                  </div>
+                  <span className="text-xs text-white/30 font-mono">
+                    {new Date(guild.created_at).toLocaleDateString()}
+                  </span>
+                  <button onClick={(e) => { e.stopPropagation(); handleDeleteGuild(guild.id); }}
+                    className="text-red-400/50 hover:text-red-400 transition-colors p-1">
+                    🗑️
+                  </button>
+                </div>
+
+                {/* Members dropdown */}
+                {selectedGuild === guild.id && (
+                  <div className="ml-8 mt-2 space-y-2">
+                    {members.length === 0 ? (
+                      <p className="text-white/30 text-sm py-2">No members</p>
+                    ) : (
+                      members.map((member) => (
+                        <div key={member.id} className="flex items-center gap-3 p-3 bg-white/[0.03] border border-white/[0.06] rounded-lg">
+                          <span>{roleIcon(member.role)}</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-white truncate">{member.display_name}</p>
+                            <p className={`text-xs font-bold capitalize ${roleColor(member.role)}`}>{member.role}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-xs text-[#d4a853] font-mono">{member.weekly_contribution} 💰</p>
+                            <p className="text-xs text-white/20">{new Date(member.joined_at).toLocaleDateString()}</p>
+                          </div>
+                          {member.role !== "leader" && (
+                            <button onClick={() => handleRemoveMember(member.id)}
+                              className="text-red-400/40 hover:text-red-400 text-xs transition-colors">
+                              ✕
+                            </button>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </Section>
+    </div>
+  );
+}
+
+// ─── Players Panel ───
+
+function PlayersPanel() {
+  const [players, setPlayers] = useState<PlayerStatsRow[]>([]);
+  const [battles, setBattles] = useState<BattleStatsRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState<string | null>(null);
+  const [view, setView] = useState<"players" | "battles">("players");
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 2500);
+  };
+
+  const loadData = useCallback(async () => {
+    try {
+      const [p, b] = await Promise.all([fetchPlayerStats(), fetchRecentBattles()]);
+      setPlayers(p);
+      setBattles(b);
+    } catch (e: any) {
+      showToast("Failed to load data: " + e.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadData(); }, [loadData]);
+
+  const totalGold = players.reduce((sum, p) => sum + p.gold, 0);
+  const totalGems = players.reduce((sum, p) => sum + p.gems, 0);
+  const totalSpins = players.reduce((sum, p) => sum + p.total_spins, 0);
+  const totalBattles = battles.length;
+  const attackerWins = battles.filter((b) => b.attacker_won).length;
+
+  return (
+    <div className="space-y-8">
+      {toast && (
+        <div className="fixed top-20 right-4 bg-[#1a1a25] border border-[#d4a853]/30 text-white px-4 py-2 rounded-lg shadow-lg z-50 animate-fade-in-up">
+          {toast}
+        </div>
+      )}
+
+      {/* Stats Overview */}
+      <Section title="📊 Overview">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          {[
+            { label: "Players", value: players.length, icon: "👥" },
+            { label: "Total Gold", value: totalGold.toLocaleString(), icon: "💰" },
+            { label: "Total Gems", value: totalGems.toLocaleString(), icon: "💎" },
+            { label: "Total Spins", value: totalSpins.toLocaleString(), icon: "🎰" },
+            { label: "Battles", value: totalBattles, icon: "⚔️" },
+          ].map((stat) => (
+            <div key={stat.label} className="text-center p-4 bg-white/5 rounded-xl border border-white/10">
+              <div className="text-2xl mb-1">{stat.icon}</div>
+              <div className="text-lg font-bold text-[#d4a853] font-mono">{stat.value}</div>
+              <div className="text-xs text-white/30 mt-1">{stat.label}</div>
+            </div>
+          ))}
+        </div>
+      </Section>
+
+      {/* View Toggle */}
+      <div className="flex gap-2">
+        <button onClick={() => setView("players")}
+          className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+            view === "players" ? "bg-[#d4a853]/20 text-[#d4a853] border border-[#d4a853]/40" : "bg-white/5 text-white/40 border border-white/10"
+          }`}>
+          👥 Top Players
+        </button>
+        <button onClick={() => setView("battles")}
+          className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+            view === "battles" ? "bg-[#d4a853]/20 text-[#d4a853] border border-[#d4a853]/40" : "bg-white/5 text-white/40 border border-white/10"
+          }`}>
+          ⚔️ Recent Battles
+        </button>
+      </div>
+
+      {view === "players" ? (
+        <Section title="👥 Top Players (by Gold)" trailing={
+          <button onClick={() => { setLoading(true); loadData(); }}
+            className="text-sm text-[#d4a853]/60 hover:text-[#d4a853] transition-colors">
+            ↻ Refresh
+          </button>
+        }>
+          {loading ? (
+            <div className="text-center py-8 text-[#d4a853] animate-pulse">Loading...</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-white/30 text-xs border-b border-white/10">
+                    <th className="text-left py-2 px-3">#</th>
+                    <th className="text-left py-2 px-3">Name</th>
+                    <th className="text-right py-2 px-3">💰 Gold</th>
+                    <th className="text-right py-2 px-3">💎 Gems</th>
+                    <th className="text-right py-2 px-3">🎰 Spins</th>
+                    <th className="text-right py-2 px-3">Joined</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {players.map((player, i) => (
+                    <tr key={player.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                      <td className="py-2.5 px-3 text-white/30 font-mono">{i + 1}</td>
+                      <td className="py-2.5 px-3 text-white font-bold truncate max-w-[150px]">{player.display_name}</td>
+                      <td className="py-2.5 px-3 text-right text-[#d4a853] font-mono">{player.gold.toLocaleString()}</td>
+                      <td className="py-2.5 px-3 text-right text-cyan-400 font-mono">{player.gems.toLocaleString()}</td>
+                      <td className="py-2.5 px-3 text-right text-white/50 font-mono">{player.total_spins.toLocaleString()}</td>
+                      <td className="py-2.5 px-3 text-right text-white/20 text-xs">{new Date(player.created_at).toLocaleDateString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Section>
+      ) : (
+        <Section title="⚔️ Recent Battles" trailing={
+          <button onClick={() => { setLoading(true); loadData(); }}
+            className="text-sm text-[#d4a853]/60 hover:text-[#d4a853] transition-colors">
+            ↻ Refresh
+          </button>
+        }>
+          {loading ? (
+            <div className="text-center py-8 text-[#d4a853] animate-pulse">Loading...</div>
+          ) : battles.length === 0 ? (
+            <div className="text-center py-8">
+              <div className="text-4xl mb-2 opacity-20">⚔️</div>
+              <p className="text-white/30 text-sm">No battles recorded</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {battles.map((battle) => (
+                <div key={battle.id} className="flex items-center gap-3 p-3 bg-white/5 border border-white/10 rounded-lg">
+                  <span className={`text-lg ${battle.attacker_won ? "text-green-400" : "text-red-400"}`}>
+                    {battle.attacker_won ? "⚔️" : "🛡️"}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-white">
+                      <span className="font-mono text-xs text-white/40">{battle.attacker_id.slice(0, 8)}...</span>
+                      <span className="text-white/30 mx-2">→</span>
+                      <span className="font-mono text-xs text-white/40">{battle.defender_id.slice(0, 8)}...</span>
+                    </p>
+                  </div>
+                  <span className={`text-xs font-bold px-2 py-1 rounded-full ${
+                    battle.attacker_won ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-400"
+                  }`}>
+                    {battle.attacker_won ? "WIN" : "LOSS"}
+                  </span>
+                  <span className="text-xs text-[#d4a853] font-mono">{battle.gold_looted} 💰</span>
+                  <span className="text-xs text-white/20">{new Date(battle.created_at).toLocaleDateString()}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </Section>
+      )}
     </div>
   );
 }
